@@ -33,8 +33,7 @@ void *Reap( void * p);
 int main(){
 	int i,j;
 	pthread_t reaperThread;
-    /*** Memory alignment of buffer ***/
-	posix_memalign((void**)&buffer,BUFFERSIZE,BUFFERSIZE);
+
     /* Open the file for writing */
 	filedes=open(PATH,O_WRONLY|O_CREAT|O_DIRECT,0644);  
 	if(filedes<=0)
@@ -48,7 +47,9 @@ int main(){
 	pthread_create(&reaperThread,NULL,Reap,(void *)&i);
 	
 	for(i=0;i<100;i++){
-	num[i]=i;
+		/*** Memory alignment of buffer ***/
+		posix_memalign((void**)&buffer,BUFFERSIZE,BUFFERSIZE);
+		num[i]=i;
 		for(j=0;j<BUFFERSIZE;j++){
             //Generate random alphabets to write to file*/
 			buffer[j]=(char)(rand()%26+65);		
@@ -79,7 +80,8 @@ void SubmitWrite(int offset){
 /* Responds to the IO completion Events */
 void *Reap(void *p){
 	struct io_event eventsReaped[MAXEVENTS];
-	int event_completed,i,k=0,data;
+	int event_completed,i,k=0;
+	void *data;
 	/* Timeout after 1 second */
 	struct timespec timeout;
 	timeout.tv_sec=1;
@@ -92,10 +94,10 @@ void *Reap(void *p){
 		event_completed=io_getevents(context,1,5,eventsReaped,&timeout);
 		k+=event_completed;
 		for(i=0;i<event_completed;i++){
-			data=*((int *)eventsReaped[i].data);		
+			data=eventsReaped[i].data;		
             /* Print the outcome of IO" */
-			printf("WriteCompleted %d  res=%ld\n",data,
-				eventsReaped[i].obj->data,eventsReaped[i].res);
+            		free(data);
+			printf("WriteCompleted %p  res=%ld\n",data,eventsReaped[i].res);
 		}
 	}
 
